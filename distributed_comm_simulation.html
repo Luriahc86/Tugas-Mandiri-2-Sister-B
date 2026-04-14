@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulasi Komunikasi Sistem Terdistribusi</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(160deg,#0f172a 0%,#1a2540 100%);
+  min-height:100vh; color:#e2e8f0;
+}
+
+/* ── WRAPPER ── */
+.sim-wrap{max-width:1040px;width:100%;margin:0 auto;padding:20px 14px 36px}
+
+/* ── HEADER ── */
+.sim-header{text-align:center;margin-bottom:22px}
+.sim-header h1{
+  font-size:clamp(17px,3.5vw,24px);font-weight:800;
+  background:linear-gradient(90deg,#60a5fa,#a78bfa,#34d399);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1.3;
+}
+.sim-header p{font-size:13px;color:#64748b;margin-top:5px}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;gap:6px;margin-bottom:18px;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;padding:6px;
+}
+.tab{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 12px;font-size:12.5px;font-weight:600;
+  border:none;border-radius:10px;cursor:pointer;
+  background:transparent;color:#64748b;transition:all .2s;
+  font-family:'Inter',sans-serif;
+}
+.tab svg{width:16px;height:16px;flex-shrink:0}
+.tab:hover{background:rgba(255,255,255,0.07);color:#cbd5e1}
+.tab.active{
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.4);
+}
+.tab-inner{display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center}
+.tab-label{line-height:1.2;font-size:12.5px}
+.tab-desc{font-size:9.5px;font-weight:400;opacity:.65}
+
+/* ── PANELS ── */
+.panel{display:none}.panel.active{display:block}
+
+/* ── 2-COL GRID ── */
+.panel-grid{display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start}
+
+/* ── CANVAS CARD ── */
+.canvas-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:16px;overflow:hidden;
+}
+.canvas-card-header{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.07);
+  font-size:11.5px;font-weight:600;color:#64748b;
+}
+.canvas-card-header svg{width:14px;height:14px;opacity:.7;flex-shrink:0}
+.canvas-pad{padding:14px}
+canvas{display:block;border-radius:10px;width:100%}
+
+/* ── LEGEND ── */
+.leg{
+  display:flex;flex-wrap:wrap;gap:8px 14px;
+  padding:10px 14px 12px;border-top:1px solid rgba(255,255,255,0.06);
+}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b;font-weight:500}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── CTRL COL ── */
+.ctrl-col{display:flex;flex-direction:column;gap:10px}
+
+/* ── CARD ── */
+.card{
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:13px;padding:13px;
+}
+.card-title{
+  display:flex;align-items:center;gap:7px;
+  font-size:10.5px;font-weight:700;color:#64748b;
+  text-transform:uppercase;letter-spacing:.8px;
+  margin-bottom:12px;padding-bottom:8px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+}
+.card-title svg{width:13px;height:13px;flex-shrink:0}
+
+/* ── FORM ── */
+.form-group{margin-bottom:10px}
+label{
+  display:flex;align-items:center;gap:5px;
+  font-size:11.5px;font-weight:600;color:#94a3b8;margin-bottom:5px;
+}
+label svg{width:12px;height:12px;opacity:.7}
+select{
+  width:100%;padding:8px 30px 8px 10px;font-size:12.5px;
+  border-radius:8px;border:1.5px solid rgba(255,255,255,0.12);
+  background:#0c1628;color:#e2e8f0;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s;
+}
+select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+.range-row{display:flex;align-items:center;gap:8px;margin-top:5px}
+.range-row input[type=range]{flex:1;accent-color:#3b82f6;height:4px;cursor:pointer}
+.range-val{
+  font-size:12px;font-weight:700;min-width:46px;text-align:center;
+  background:rgba(59,130,246,.18);color:#60a5fa;border-radius:6px;padding:2px 6px;
+}
+
+/* ── STEP GUIDE ── */
+.step-guide{
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  font-size:11px;color:#64748b;margin-bottom:10px;
+  background:rgba(255,255,255,0.04);border-radius:8px;padding:7px 10px;
+}
+.step-num{
+  width:18px;height:18px;background:#3b82f6;color:#fff;
+  border-radius:50%;font-size:10px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-arrow{color:#334155;font-size:10px}
+
+/* ── HINT ── */
+.hint{
+  display:flex;align-items:flex-start;gap:7px;
+  background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.22);
+  border-radius:8px;padding:8px 10px;
+  font-size:11.5px;color:#93c5fd;margin-bottom:10px;line-height:1.6;
+}
+.hint svg{width:14px;height:14px;flex-shrink:0;margin-top:1px}
+
+/* ── BUTTONS ── */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:10px;font-size:12.5px;font-weight:700;
+  border-radius:9px;cursor:pointer;transition:all .15s;
+  border:1.5px solid rgba(255,255,255,0.1);font-family:'Inter',sans-serif;
+}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn:active{transform:scale(.97)}
+.btn-primary{
+  background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;
+  border-color:transparent;box-shadow:0 4px 12px rgba(37,99,235,.35);
+}
+.btn-primary:hover{box-shadow:0 6px 18px rgba(37,99,235,.5);transform:translateY(-1px)}
+.btn-danger{background:rgba(239,68,68,.13);color:#f87171;border-color:rgba(239,68,68,.28)}
+.btn-danger:hover{background:rgba(239,68,68,.22)}
+.btn-success{background:rgba(16,185,129,.13);color:#34d399;border-color:rgba(16,185,129,.28)}
+.btn-success:hover{background:rgba(16,185,129,.22)}
+.btn-active{background:linear-gradient(135deg,#059669,#10b981);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(16,185,129,.35)}
+
+/* ── METRICS ── */
+.metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.metric{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;padding:9px 6px;text-align:center;
+}
+.metric-val{font-size:21px;font-weight:800;color:#f1f5f9;line-height:1}
+.metric-lbl{font-size:9px;color:#64748b;margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.metric-icon{display:flex;align-items:center;justify-content:center;margin-bottom:3px}
+.metric-icon svg{width:14px;height:14px}
+
+/* ── BARS ── */
+.bar-wrap{margin:7px 0}
+.bar-lbl{font-size:11px;color:#64748b;margin-bottom:3px;display:flex;justify-content:space-between;font-weight:500}
+.bar-bg{background:rgba(255,255,255,0.07);border-radius:99px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width .5s ease}
+
+/* ── LOG ── */
+.log-box{
+  background:#060e1c;border-radius:8px;border:1px solid rgba(255,255,255,0.06);
+  font-size:10.5px;font-family:'Consolas','Courier New',monospace;
+  height:100px;overflow-y:auto;padding:7px;
+}
+.log-box::-webkit-scrollbar{width:3px}
+.log-box::-webkit-scrollbar-track{background:transparent}
+.log-box::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
+.log-entry{padding:1.5px 0;border-bottom:1px solid #0f172a;line-height:1.65}
+.log-entry:last-child{border:none}
+.log-time{color:#334155}
+.log-send{color:#60a5fa}.log-recv{color:#34d399}.log-pub{color:#fb923c}.log-err{color:#f87171}
+
+/* ── SUB STATUS ── */
+.sub-status-row{
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:11px;
+}
+.sub-status-row:last-child{border:none}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700}
+.badge-blue{background:rgba(59,130,246,.2);color:#60a5fa}
+.badge-teal{background:rgba(16,185,129,.2);color:#34d399}
+.badge-amber{background:rgba(245,158,11,.2);color:#fbbf24}
+.badge-red{background:rgba(239,68,68,.2);color:#f87171}
+
+/* ── COMPARE ── */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cmp-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:14px}
+.cmp-title{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid currentColor}
+.cmp-title svg{width:17px;height:17px;flex-shrink:0}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:5.5px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.cmp-row:last-child{border:none}
+.cmp-key{color:#64748b;display:flex;align-items:center;gap:5px}
+.cmp-key svg{width:11px;height:11px;opacity:.6}
+.cmp-val{font-weight:700;font-size:11.5px}
+
+/* ── INFO BOX ── */
+.info-box{margin-top:14px;padding:16px;border-radius:13px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)}
+.info-box-title{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:10px}
+.info-box-title svg{width:16px;height:16px}
+.info-box-body{font-size:12px;color:#94a3b8;line-height:1.9}
+.info-box-body strong{color:#e2e8f0}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .panel-grid{grid-template-columns:1fr}
+  .compare-grid{grid-template-columns:1fr}
+}
+@media(max-width:500px){
+  .tab{padding:9px 6px;font-size:11px;gap:5px}
+  .tab-desc{display:none}
+  .tab svg{width:14px;height:14px}
+  .metric-val{font-size:18px}
+  .sim-wrap{padding:12px 10px 28px}
+}
+@media(max-width:370px){
+  .tab-label{display:none}
+  .tab{padding:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- SVG sprite -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-rr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="3" y1="8" x2="21" y2="8"/><polyline points="16 3 21 8 16 13"/>
+    <line x1="21" y1="16" x2="3" y2="16"/><polyline points="8 11 3 16 8 21"/>
+  </symbol>
+  <symbol id="i-ps" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.9 4.9a9 9 0 0114.1 0M7.7 7.7a5 5 0 018.5 0"/>
+    <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+    <line x1="12" y1="13.5" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
+  </symbol>
+  <symbol id="i-cmp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="12" width="4" height="9"/><rect x="10" y="6" width="4" height="15"/><rect x="17" y="3" width="4" height="18"/>
+  </symbol>
+  <symbol id="i-ctrl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="6" x2="20" y2="6"/><circle cx="8"  cy="6"  r="2.5" fill="currentColor" stroke="none"/>
+    <line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+    <line x1="4" y1="18" x2="20" y2="18"/><circle cx="10" cy="18" r="2.5" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-metric" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </symbol>
+  <symbol id="i-log" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+    <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+  </symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+  </symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+  </symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+  </symbol>
+  <symbol id="i-spkr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+    <path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+    <line x1="7" y1="7" x2="7.01" y2="7"/>
+  </symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+  </symbol>
+  <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+    <path d="M3 5v4c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+    <path d="M3 9v4c0 1.66 4.03 3 9 3s9-1.34 9-3V9"/>
+    <path d="M3 13v4c0 1.66 4.03 3 9 3s9-1.34 9-3v-4"/>
+  </symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+  </symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+  </symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+  </symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+  </symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+  </symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+  </symbol>
+</svg>
+
+<div class="sim-wrap">
+  <div class="sim-header">
+    <h1>🌐 Simulasi Komunikasi Sistem Terdistribusi</h1>
+    <p>Visualisasi interaktif Request-Response &amp; Publish-Subscribe</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" onclick="switchTab('rr')" id="tab-btn-rr" role="tab">
+      <svg><use href="#i-rr"/></svg>
+      <div class="tab-inner">
+        <span class="tab-label">Request-Response</span>
+        <span class="tab-desc">Sinkron · Client↔Server</span>
+      </div>
+    </button>
+    <button class="tab" onclick="switchTab('ps')" id="tab-btn-ps" role="tab">
+      <svg><use href="#i-ps"/></svg>
+      <div class="tab-inner">
+        <span class="tab-label">Publish-Subscribe</span>
+        <span class="tab-desc">Asinkron · via Broker</span>
+      </div>
+    </button>
+    <button class="tab" onclick="switchTab('cmp')" id="tab-btn-cmp" role="tab">
+      <svg><use href="#i-cmp"/></svg>
+      <div class="tab-inner">
+        <span class="tab-label">Perbandingan</span>
+        <span class="tab-desc">Analisis &amp; Statistik</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- ══ REQUEST-RESPONSE ══ -->
+  <div id="tab-rr" class="panel active" role="tabpanel">
+    <div class="panel-grid">
+      <div class="canvas-card">
+        <div class="canvas-card-header">
+          <svg><use href="#i-rr"/></svg>
+          Client mengirim permintaan → Server membalas
+        </div>
+        <div class="canvas-pad"><canvas id="cvRR"></canvas></div>
+        <div class="leg">
+          <div class="leg-item"><div class="leg-dot" style="background:#3b82f6"></div>Client</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#10b981"></div>Server</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>Request →</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#34d399"></div>Response ←</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#ef4444"></div>Timeout</div>
+        </div>
+      </div>
+
+      <div class="ctrl-col">
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-ctrl"/></svg>Kontrol</div>
+          <div class="step-guide">
+            <span class="step-num">1</span><span>Pilih client</span>
+            <span class="step-arrow">›</span>
+            <span class="step-num">2</span><span>Pilih server</span>
+            <span class="step-arrow">›</span>
+            <span class="step-num">3</span><span>Kirim!</span>
+          </div>
+          <div class="form-group">
+            <label for="rrFrom"><svg><use href="#i-monitor"/></svg>Pengirim (Client):</label>
+            <select id="rrFrom">
+              <option value="0">🖥️ Client A</option>
+              <option value="1">🖥️ Client B</option>
+              <option value="2">🖥️ Client C</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="rrTo"><svg><use href="#i-db"/></svg>Tujuan (Server):</label>
+            <select id="rrTo">
+              <option value="3">🔐 Auth Server</option>
+              <option value="4">🗄️ Data Server</option>
+              <option value="5">📁 File Server</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="rrLatency"><svg><use href="#i-clock"/></svg>Kecepatan jaringan:</label>
+            <div class="range-row">
+              <input type="range" id="rrLatency" min="200" max="2000" value="600" step="100">
+              <span class="range-val" id="rrLatVal">600ms</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="sendRR()" style="margin-bottom:8px">
+            <svg><use href="#i-send"/></svg>Kirim Request
+          </button>
+          <button class="btn btn-danger" onclick="sendRRError()">
+            <svg><use href="#i-alert"/></svg>Simulasi Timeout
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-metric"/></svg>Statistik</div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="metric-icon" style="color:#60a5fa"><svg><use href="#i-send"/></svg></div>
+              <div class="metric-val" id="rrSent">0</div>
+              <div class="metric-lbl">Dikirim</div>
+            </div>
+            <div class="metric">
+              <div class="metric-icon" style="color:#34d399"><svg><use href="#i-ok"/></svg></div>
+              <div class="metric-val" id="rrRecv">0</div>
+              <div class="metric-lbl">Diterima</div>
+            </div>
+            <div class="metric">
+              <div class="metric-icon" style="color:#f87171"><svg><use href="#i-x"/></svg></div>
+              <div class="metric-val" id="rrErr">0</div>
+              <div class="metric-lbl">Error</div>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <div class="bar-lbl"><span>Rata-rata Latency</span><span id="rrAvgLat" style="color:#60a5fa;font-weight:700">0ms</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="rrLatBar" style="width:0%;background:#3b82f6"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-log"/></svg>Log Pesan</div>
+          <div class="log-box" id="rrLog">
+            <div class="log-entry"><span class="log-time">[--:--:--]</span> <span style="color:#334155">Klik "Kirim Request" untuk mulai…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PUBLISH-SUBSCRIBE ══ -->
+  <div id="tab-ps" class="panel" role="tabpanel">
+    <div class="panel-grid">
+      <div class="canvas-card">
+        <div class="canvas-card-header">
+          <svg><use href="#i-ps"/></svg>
+          Publisher → Broker → Subscriber (berdasarkan topic)
+        </div>
+        <div class="canvas-pad"><canvas id="cvPS"></canvas></div>
+        <div class="leg">
+          <div class="leg-item"><div class="leg-dot" style="background:#ea580c"></div>Publisher</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#7c3aed"></div>Broker</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#10b981"></div>Subscriber</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>Pesan aktif</div>
+        </div>
+      </div>
+
+      <div class="ctrl-col">
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-ctrl"/></svg>Kontrol</div>
+          <div class="hint">
+            <svg><use href="#i-info"/></svg>
+            Publisher kirim ke <strong>topic</strong>. Hanya subscriber yang subscribe topic itu yang terima pesan.
+          </div>
+          <div class="form-group">
+            <label for="psFrom"><svg><use href="#i-spkr"/></svg>Publisher / Sensor:</label>
+            <select id="psFrom">
+              <option value="0">🌡️ Sensor Suhu</option>
+              <option value="1">⬆️ Sensor Tekanan</option>
+              <option value="2">🚶 Sensor Gerak</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="psTopic"><svg><use href="#i-tag"/></svg>Topic (saluran pesan):</label>
+            <select id="psTopic">
+              <option value="temperature">🌡️ temperature</option>
+              <option value="pressure">⬆️ pressure</option>
+              <option value="motion">🚶 motion</option>
+              <option value="alert">🚨 alert</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="publishMsg()" style="margin-bottom:8px">
+            <svg><use href="#i-spkr"/></svg>Publish Pesan
+          </button>
+          <button class="btn btn-success" onclick="toggleAuto()" id="autoPubBtn">
+            <svg><use href="#i-play"/></svg>
+            <span id="autoPubLabel">Auto Publish: MATI</span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-users"/></svg>Penerimaan Subscriber</div>
+          <div id="subStatus" style="font-size:12px;min-height:36px">
+            <div style="color:#334155;font-size:11px;padding:6px 0;text-align:center">Belum ada pesan…</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-metric"/></svg>Statistik</div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="metric-icon" style="color:#fb923c"><svg><use href="#i-spkr"/></svg></div>
+              <div class="metric-val" id="psPub">0</div>
+              <div class="metric-lbl">Published</div>
+            </div>
+            <div class="metric">
+              <div class="metric-icon" style="color:#34d399"><svg><use href="#i-send"/></svg></div>
+              <div class="metric-val" id="psDlv">0</div>
+              <div class="metric-lbl">Delivered</div>
+            </div>
+            <div class="metric">
+              <div class="metric-icon" style="color:#a78bfa"><svg><use href="#i-users"/></svg></div>
+              <div class="metric-val" id="psSubs">0</div>
+              <div class="metric-lbl">Aktif Sub</div>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <div class="bar-lbl"><span>Throughput</span><span id="psThroughput" style="color:#34d399;font-weight:700">0 msg/s</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="psThrBar" style="width:0%;background:#10b981"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><svg><use href="#i-log"/></svg>Log Pesan</div>
+          <div class="log-box" id="psLog">
+            <div class="log-entry"><span class="log-time">[--:--:--]</span> <span style="color:#334155">Klik "Publish Pesan" untuk mulai…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMPARISON ══ -->
+  <div id="tab-cmp" class="panel" role="tabpanel">
+    <div class="compare-grid">
+      <div class="cmp-card" style="border-top:4px solid #3b82f6">
+        <div class="cmp-title" style="color:#3b82f6">
+          <svg><use href="#i-rr"/></svg>Request-Response
+        </div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-zap"/></svg>Pola komunikasi</span><span class="cmp-val">Sinkron</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-link"/></svg>Kopling</span><span class="cmp-val"><span class="badge badge-red">Tight (Erat)</span></span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-trend"/></svg>Skalabilitas</span><span class="cmp-val"><span class="badge badge-amber">Sedang</span></span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-eye"/></svg>Pengirim tahu penerima</span><span class="cmp-val" style="color:#34d399">✔ Ya</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-eye"/></svg>Penerima tahu pengirim</span><span class="cmp-val" style="color:#34d399">✔ Ya</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-zap"/></svg>Blocking</span><span class="cmp-val" style="color:#34d399">✔ Ya</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-shield"/></svg>Contoh penggunaan</span><span class="cmp-val" style="font-size:11px">HTTP, RPC, DB Query</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-refresh"/></svg>Fault tolerance</span><span class="cmp-val"><span class="badge badge-amber">Perlu retry</span></span></div>
+        <div style="margin-top:12px">
+          <div class="bar-wrap"><div class="bar-lbl"><span>Latency</span><span id="cmpRRLat" style="font-weight:700">600ms</span></div><div class="bar-bg"><div class="bar-fill" id="barRRLat" style="width:60%;background:#ef4444"></div></div></div>
+          <div class="bar-wrap"><div class="bar-lbl"><span>Throughput</span><span id="cmpRRThr" style="font-weight:700">-</span></div><div class="bar-bg"><div class="bar-fill" id="barRRThr" style="width:0%;background:#3b82f6"></div></div></div>
+          <div class="bar-wrap"><div class="bar-lbl"><span>Pesan dikirim</span><span id="cmpRRMsg" style="font-weight:700">0</span></div><div class="bar-bg"><div class="bar-fill" id="barRRMsg" style="width:0%;background:#3b82f6"></div></div></div>
+        </div>
+      </div>
+      <div class="cmp-card" style="border-top:4px solid #10b981">
+        <div class="cmp-title" style="color:#10b981">
+          <svg><use href="#i-ps"/></svg>Publish-Subscribe
+        </div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-zap"/></svg>Pola komunikasi</span><span class="cmp-val">Asinkron</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-link"/></svg>Kopling</span><span class="cmp-val"><span class="badge badge-teal">Loose (Longgar)</span></span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-trend"/></svg>Skalabilitas</span><span class="cmp-val"><span class="badge badge-teal">Tinggi</span></span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-eye"/></svg>Pengirim tahu penerima</span><span class="cmp-val" style="color:#f87171">✖ Tidak</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-eye"/></svg>Penerima tahu pengirim</span><span class="cmp-val" style="color:#f87171">✖ Tidak</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-zap"/></svg>Blocking</span><span class="cmp-val" style="color:#f87171">✖ Tidak</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-shield"/></svg>Contoh penggunaan</span><span class="cmp-val" style="font-size:11px">IoT, Kafka, Redis</span></div>
+        <div class="cmp-row"><span class="cmp-key"><svg><use href="#i-refresh"/></svg>Fault tolerance</span><span class="cmp-val"><span class="badge badge-teal">Broker buffer</span></span></div>
+        <div style="margin-top:12px">
+          <div class="bar-wrap"><div class="bar-lbl"><span>Latency</span><span id="cmpPSLat" style="font-weight:700">~50ms</span></div><div class="bar-bg"><div class="bar-fill" id="barPSLat" style="width:12%;background:#ef4444"></div></div></div>
+          <div class="bar-wrap"><div class="bar-lbl"><span>Throughput</span><span id="cmpPSThr" style="font-weight:700">-</span></div><div class="bar-bg"><div class="bar-fill" id="barPSThr" style="width:0%;background:#10b981"></div></div></div>
+          <div class="bar-wrap"><div class="bar-lbl"><span>Pesan dikirim</span><span id="cmpPSMsg" style="font-weight:700">0</span></div><div class="bar-bg"><div class="bar-fill" id="barPSMsg" style="width:0%;background:#10b981"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-title"><svg><use href="#i-book"/></svg>Penjelasan Singkat</div>
+      <div class="info-box-body">
+        <strong>Request-Response</strong> — Client mengirim permintaan dan <em>menunggu</em> balasan server secara sinkron.
+        Jika server tidak merespons dalam batas waktu → terjadi <em>timeout</em>.
+        Cocok untuk: HTTP REST API, SQL query, RPC.<br><br>
+        <strong>Publish-Subscribe</strong> — Publisher kirim pesan ke <em>topic</em> melalui Broker.
+        Subscriber yang terdaftar ke topic itu otomatis menerima pesan (asinkron, loosely-coupled).
+        Cocok untuk: MQTT, Apache Kafka, Redis Pub/Sub, notifikasi IoT.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   CANVAS HD — devicePixelRatio untuk screen tajam
+═══════════════════════════════════════════════ */
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+// ── Palette ──────────────────────────────────────
+const P = {
+  bgCanvas:   '#07101e',
+  gridLine:   'rgba(148,163,184,0.12)',
+  client:     '#3b82f6',
+  clientBg:   'rgba(59,130,246,0.14)',
+  server:     '#10b981',
+  serverBg:   'rgba(16,185,129,0.14)',
+  broker:     '#7c3aed',
+  brokerBg:   'rgba(124,58,237,0.14)',
+  pub:        '#ea580c',
+  pubBg:      'rgba(234,88,12,0.14)',
+  sub:        '#10b981',
+  subBg:      'rgba(16,185,129,0.14)',
+  reqArrow:   '#f59e0b',
+  resArrow:   '#34d399',
+  errArrow:   '#ef4444',
+  label:      '#e2e8f0',
+  labelSec:   '#94a3b8',
+};
+
+// Topic colours & short names
+const TC = {temperature:'#ef4444', pressure:'#7c3aed', motion:'#10b981', alert:'#f59e0b'};
+const TL = {temperature:'temp', pressure:'pres', motion:'motn', alert:'alrt'};
+
+// ── STATE ────────────────────────────────────────
+let rrState = {sent:0,recv:0,err:0,latencies:[],packets:[]};
+let psState = {pub:0,dlv:0,packets:[],msgCount:0,lastSecond:Date.now()};
+let autoRunning = false, autoTimer = null;
+const startTime = Date.now();
+
+// ── CANVAS SETUP ─────────────────────────────────
+let rrCtx, psCtx, rrW, rrH, psW, psH;
+let rrNodes=[], psNodes=[];
+
+function setupCanvas(id) {
+  const pad  = document.getElementById(id).closest('.canvas-pad');
+  const cv   = document.getElementById(id);
+  let w = pad.clientWidth;
+  if(w === 0) {
+    const activePad = document.querySelector('.panel.active .canvas-pad');
+    if (activePad) w = activePad.clientWidth;
+  }
+  const W    = Math.max(w - 28, 100);   // 14px padding × 2
+  const H    = Math.round(W * 0.52);  // aspect ratio
+  cv.width   = Math.round(W * DPR);
+  cv.height  = Math.round(H * DPR);
+  cv.style.width  = W + 'px';
+  cv.style.height = H + 'px';
+  const ctx  = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+  return {ctx, W, H};
+}
+
+// Node definitions — fractions of W & H
+const RR_DEFS = [
+  {id:0, fx:0.13, fy:0.25, label:'Client A',   type:'client'},
+  {id:1, fx:0.13, fy:0.52, label:'Client B',   type:'client'},
+  {id:2, fx:0.13, fy:0.79, label:'Client C',   type:'client'},
+  {id:3, fx:0.87, fy:0.25, label:'Auth',        type:'server'},
+  {id:4, fx:0.87, fy:0.52, label:'Data',        type:'server'},
+  {id:5, fx:0.87, fy:0.79, label:'File',        type:'server'},
+];
+// PS: subscribers at 0.76 to leave room for chips to the right within canvas
+const PS_DEFS = [
+  {id:0, fx:0.11, fy:0.22, label:'Suhu',     type:'pub'},
+  {id:1, fx:0.11, fy:0.52, label:'Tekanan',  type:'pub'},
+  {id:2, fx:0.11, fy:0.82, label:'Gerak',    type:'pub'},
+  {id:3, fx:0.46, fy:0.52, label:'Broker',   type:'broker'},
+  {id:4, fx:0.78, fy:0.17, label:'Dashboard',type:'sub', topics:['temperature','pressure','motion','alert']},
+  {id:5, fx:0.78, fy:0.40, label:'Monitor',  type:'sub', topics:['temperature','alert']},
+  {id:6, fx:0.78, fy:0.63, label:'Logger',   type:'sub', topics:['pressure','motion','temperature']},
+  {id:7, fx:0.78, fy:0.86, label:'Alarm',    type:'sub', topics:['alert','motion']},
+];
+
+function scale(defs, W, H) {
+  return defs.map(d => ({...d, x: d.fx*W, y: d.fy*H}));
+}
+
+function initCanvases() {
+  const rr = setupCanvas('cvRR');
+  rrCtx = rr.ctx; rrW = rr.W; rrH = rr.H;
+  rrNodes = scale(RR_DEFS, rrW, rrH);
+
+  const ps = setupCanvas('cvPS');
+  psCtx = ps.ctx; psW = ps.W; psH = ps.H;
+  psNodes = scale(PS_DEFS, psW, psH);
+
+  render();
+}
+
+// ── DRAW HELPERS ─────────────────────────────────
+function drawCircle(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2); ctx.closePath();
+}
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+const NR = 20; // node radius (logical px)
+
+// Draw rounded node circle with center letter + label below
+function drawNode(ctx, n, color, bg) {
+  // glow
+  ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(n.x, n.y, NR, 0, Math.PI*2);
+  ctx.fillStyle = bg; ctx.fill(); ctx.restore();
+  // ring
+  ctx.beginPath(); ctx.arc(n.x, n.y, NR, 0, Math.PI*2);
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+  // center icon letter
+  const abbr = {client:'C', server:'S', broker:'B', pub:'P', sub:'S'}[n.type];
+  ctx.font = 'bold 13px Inter,sans-serif';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(abbr, n.x, n.y);
+  // label below
+  ctx.font = '600 10px Inter,sans-serif';
+  ctx.fillStyle = P.label;
+  ctx.textBaseline = 'top';
+  ctx.fillText(n.label, n.x, n.y + NR + 4);
+}
+
+// Section header pill
+function drawPill(ctx, x, y, text, color) {
+  ctx.font = 'bold 10.5px Inter,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(text).width;
+  const pw = tw+18, ph=20;
+  ctx.fillStyle = color+'22';
+  rrect(ctx, x-pw/2, y-ph/2, pw, ph, ph/2);
+  ctx.fill();
+  ctx.strokeStyle = color+'77'; ctx.lineWidth=1; rrect(ctx, x-pw/2, y-ph/2, pw, ph, ph/2); ctx.stroke();
+  ctx.fillStyle = color; ctx.fillText(text, x, y);
+}
+
+// Dashed connection line
+function dashLine(ctx, x1, y1, x2, y2) {
+  ctx.save();
+  ctx.setLineDash([5,7]); ctx.strokeStyle = P.gridLine; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+}
+
+// Animated packet
+function drawPacket(ctx, p) {
+  const r = p.r || 7;
+  ctx.save();
+  ctx.shadowColor = p.color; ctx.shadowBlur = 14;
+  ctx.globalAlpha = p.alpha || 1;
+  ctx.beginPath(); ctx.arc(p.cx, p.cy, r, 0, Math.PI*2);
+  ctx.fillStyle = p.color; ctx.fill();
+  // gloss
+  ctx.beginPath(); ctx.arc(p.cx-r*.28, p.cy-r*.28, r*.32, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fill();
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+// ── DRAW RR ──────────────────────────────────────
+function drawRR() {
+  const ctx=rrCtx, w=rrW, h=rrH;
+  ctx.clearRect(0,0,w,h);
+
+  // background
+  ctx.fillStyle = P.bgCanvas; rrect(ctx,0,0,w,h,10); ctx.fill();
+
+  // grid lines
+  rrNodes.filter(n=>n.type==='client').forEach(c=>{
+    rrNodes.filter(n=>n.type==='server').forEach(s=>{
+      dashLine(ctx, c.x+NR, c.y, s.x-NR, s.y);
+    });
+  });
+
+  // section labels
+  drawPill(ctx, rrNodes[0].x, h*.07, 'CLIENTS', P.client);
+  drawPill(ctx, rrNodes[3].x, h*.07, 'SERVERS', P.server);
+
+  // nodes
+  rrNodes.forEach(n=>{
+    const col = n.type==='client' ? P.client : P.server;
+    const bg  = n.type==='client' ? P.clientBg : P.serverBg;
+    drawNode(ctx, n, col, bg);
+  });
+
+  // packets
+  rrState.packets.forEach(p=>drawPacket(ctx,p));
+}
+
+// ── DRAW PS ──────────────────────────────────────
+function drawPS() {
+  const ctx=psCtx, w=psW, h=psH;
+  ctx.clearRect(0,0,w,h);
+
+  // background
+  ctx.fillStyle = P.bgCanvas; rrect(ctx,0,0,w,h,10); ctx.fill();
+
+  const broker = psNodes[3];
+
+  // Broker column box
+  const bw=46, bh=h*.6;
+  ctx.save(); ctx.shadowColor=P.broker; ctx.shadowBlur=18;
+  ctx.fillStyle=P.brokerBg; rrect(ctx, broker.x-bw/2, broker.y-bh/2, bw, bh, 12); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle=P.broker; ctx.lineWidth=1.5;
+  rrect(ctx, broker.x-bw/2, broker.y-bh/2, bw, bh, 12); ctx.stroke();
+
+  // connection lines
+  psNodes.filter(n=>n.type==='pub').forEach(n=>{
+    dashLine(ctx, n.x+NR, n.y, broker.x-NR, broker.y);
+  });
+  psNodes.filter(n=>n.type==='sub').forEach(n=>{
+    dashLine(ctx, broker.x+NR, broker.y, n.x-NR, n.y);
+  });
+
+  // section labels
+  drawPill(ctx, psNodes[0].x, h*.055, 'PUBLISHERS', P.pub);
+  drawPill(ctx, broker.x,    h*.055, 'BROKER',    P.broker);
+  drawPill(ctx, psNodes[4].x, h*.055, 'SUBSCRIBERS', P.sub);
+
+  // pub nodes
+  psNodes.filter(n=>n.type==='pub').forEach(n=>drawNode(ctx,n,P.pub,P.pubBg));
+  // broker node
+  drawNode(ctx, broker, P.broker, P.brokerBg);
+  // sub nodes + topic chips (drawn BELOW the node label)
+  psNodes.filter(n=>n.type==='sub').forEach(n=>{
+    drawNode(ctx, n, P.sub, P.subBg);
+    // chips: stacked to the RIGHT, but clipped-safe
+    const chipW=36, chipH=12, chipGap=14, chipX = n.x + NR + 6;
+    const totalH = n.topics.length * chipGap - (chipGap - chipH);
+    let cy = n.y - totalH/2;
+    n.topics.forEach(t=>{
+      const tc = TC[t]||P.reqArrow;
+      ctx.fillStyle    = tc+'28';
+      ctx.strokeStyle  = tc+'99';
+      ctx.lineWidth    = 0.8;
+      rrect(ctx, chipX, cy, chipW, chipH, chipH/2);
+      ctx.fill(); ctx.stroke();
+      ctx.font = '600 7.5px Inter,sans-serif';
+      ctx.fillStyle    = tc;
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(TL[t]||t.slice(0,4), chipX+5, cy+chipH/2);
+      cy += chipGap;
+    });
+    ctx.textAlign='center';
+  });
+
+  // packets
+  psState.packets.forEach(p=>drawPacket(ctx,p));
+}
+
+function render() { drawRR(); drawPS(); }
+
+// ── RR ANIMATION ─────────────────────────────────
+let rrAF;
+function tickRR() {
+  let alive=false;
+  rrState.packets.forEach(p=>{
+    if(p.done) return;
+    if(p.phase==='wait'){
+      if(p.waitUntil && Date.now()>=p.waitUntil){
+        p.phase='res'; p.sx=p.ex; p.sy=p.ey;
+        const fn=rrNodes[p.fromId]; p.ex=fn.x+NR; p.ey=fn.y;
+        p.t=0; p.color=P.resArrow; p.speed=0.012;
+      } else {
+        alive=true; return;
+      }
+    }
+    p.t += p.speed;
+    if(p.t>=1){
+      if(p.phase==='req'){ p.phase='wait'; p.waitUntil=Date.now()+(p.lat||600); p.t=1; }
+      else if(p.phase==='res'){ p.done=true; return; }
+    }
+    if(!p.done){ p.cx=p.sx+(p.ex-p.sx)*Math.min(p.t,1); p.cy=p.sy+(p.ey-p.sy)*Math.min(p.t,1); }
+    if(!p.done) alive=true;
+  });
+  rrState.packets=rrState.packets.filter(p=>!p.done);
+  drawRR();
+  if(alive||rrState.packets.length) rrAF=requestAnimationFrame(tickRR);
+}
+
+function sendRR(){
+  const fi=+document.getElementById('rrFrom').value;
+  const ti=+document.getElementById('rrTo').value;
+  const lat=+document.getElementById('rrLatency').value;
+  const fn=rrNodes[fi], tn=rrNodes[ti];
+  const p={fromId:fi,toId:ti,lat,sx:fn.x+NR,sy:fn.y,ex:tn.x-NR,ey:tn.y,cx:fn.x+NR,cy:fn.y,t:0,speed:0.009,phase:'req',color:P.reqArrow,r:7};
+  rrState.packets.push(p);
+  rrState.sent++; $('#rrSent').textContent=rrState.sent;
+  addLog('rrLog','send',`${fn.label} → ${tn.label} [REQ]`);
+  setTimeout(()=>{
+    if(p.error) return;
+    rrState.recv++; $('#rrRecv').textContent=rrState.recv;
+    rrState.latencies.push(lat);
+    const avg=Math.round(rrState.latencies.reduce((a,b)=>a+b,0)/rrState.latencies.length);
+    $('#rrAvgLat').textContent=avg+'ms';
+    $('#rrLatBar').style.width=Math.min(avg/2000*100,100)+'%';
+    addLog('rrLog','recv',`${tn.label} → ${fn.label} [200 OK]`);
+    cmpRR(avg, rrState.sent);
+  }, lat+1200);
+  cancelAnimationFrame(rrAF); tickRR();
+}
+
+function sendRRError(){
+  const fi=+document.getElementById('rrFrom').value;
+  const ti=+document.getElementById('rrTo').value;
+  const fn=rrNodes[fi], tn=rrNodes[ti];
+  const p={fromId:fi,toId:ti,lat:99999,sx:fn.x+NR,sy:fn.y,ex:tn.x-NR,ey:tn.y,cx:fn.x+NR,cy:fn.y,t:0,speed:0.009,phase:'req',color:P.errArrow,r:7,error:true};
+  rrState.packets.push(p);
+  rrState.sent++; $('#rrSent').textContent=rrState.sent;
+  addLog('rrLog','err',`${fn.label} → ${tn.label} [REQ]`);
+  setTimeout(()=>{ p.done=true; rrState.err++; $('#rrErr').textContent=rrState.err; addLog('rrLog','err',`⚠ Timeout — tidak ada respons dari ${tn.label}`); },2500);
+  cancelAnimationFrame(rrAF); tickRR();
+}
+
+// ── PS ANIMATION ─────────────────────────────────
+let psAF;
+function tickPS(){
+  let alive=false;
+  psState.packets.forEach(p=>{
+    if(p.done) return;
+    p.t+=p.speed; 
+    if(p.t>=1){
+      if (p.phase === 'toBroker') {
+        p.done = true;
+        const broker = psNodes[3];
+        const subs = psNodes.filter(n => n.type === 'sub' && n.topics.includes(p.topic));
+        $('#psSubs').textContent = subs.length;
+        subs.forEach((sn,i) => {
+          setTimeout(() => {
+            psState.packets.push({
+              sx: broker.x + NR, sy: broker.y, ex: sn.x - NR, ey: sn.y,
+              cx: broker.x + NR, cy: broker.y, t: 0, speed: 0.018, 
+              color: p.color, r: 6, done: false, phase: 'toSub'
+            });
+            psState.dlv++; $('#psDlv').textContent = psState.dlv;
+            addLog('psLog', 'recv', `Broker → ${sn.label} [${p.topic}]`);
+            subStatusAdd(sn.label, p.topic, p.color);
+            cmpPS(psState.pub, psState.dlv);
+            cancelAnimationFrame(psAF); tickPS();
+          }, i * 150);
+        });
+      } else {
+        p.done = true;
+      }
+    } else {
+      p.cx=p.sx+(p.ex-p.sx)*p.t; p.cy=p.sy+(p.ey-p.sy)*p.t; alive=true;
+    }
+  });
+  psState.packets=psState.packets.filter(p=>!p.done);
+  drawPS();
+  if(alive||psState.packets.length) psAF=requestAnimationFrame(tickPS);
+}
+
+function publishMsg(){
+  const pi=+document.getElementById('psFrom').value;
+  const topic=document.getElementById('psTopic').value;
+  const pn=psNodes[pi], broker=psNodes[3];
+  const color=TC[topic]||P.reqArrow;
+  psState.packets.push({sx:pn.x+NR,sy:pn.y,ex:broker.x-NR,ey:broker.y,cx:pn.x+NR,cy:pn.y,t:0,speed:0.018,color,r:7,done:false,phase:'toBroker',topic});
+  psState.pub++; $('#psPub').textContent=psState.pub;
+  addLog('psLog','pub',`${pn.label} → Broker [${topic}]`);
+  
+  psState.msgCount++;
+  const now=Date.now();
+  const elapsed=(now-psState.lastSecond)/1000;
+  if(elapsed>=1){
+    const rate=(psState.msgCount/elapsed).toFixed(1);
+    $('#psThroughput').textContent=rate+' msg/s';
+    $('#psThrBar').style.width=Math.min(rate/5*100,100)+'%';
+    psState.msgCount=0; psState.lastSecond=now;
+  } else if(elapsed>0) {
+    // Show real-time estimate
+    const rate=(psState.msgCount/elapsed).toFixed(1);
+    $('#psThroughput').textContent=rate+' msg/s';
+    $('#psThrBar').style.width=Math.min(rate/5*100,100)+'%';
+  }
+  cmpPS(psState.pub, psState.dlv);
+  cancelAnimationFrame(psAF); tickPS();
+}
+
+function subStatusAdd(name, topic, color){
+  const el=$('subStatus');
+  // Remove placeholder if present (any child with only dimmed text, no sub-status-row class)
+  const ph=el.querySelector('div:not(.sub-status-row)');
+  if(ph) ph.remove();
+  const d=document.createElement('div'); d.className='sub-status-row';
+  const ts=new Date().toLocaleTimeString('id',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  d.innerHTML=`<span style="font-weight:700;color:#e2e8f0">${name}</span>
+    <span style="background:${color}22;color:${color};padding:1px 7px;border-radius:99px;font-size:10px;font-weight:700">${topic}</span>
+    <span style="color:#334155;font-size:10px;margin-left:auto">${ts}</span>
+    <span style="color:#34d399;font-weight:800">✓</span>`;
+  el.insertBefore(d,el.firstChild);
+  if(el.children.length>8) el.removeChild(el.lastChild);
+}
+
+function toggleAuto(){
+  autoRunning=!autoRunning;
+  const btn=$('autoPubBtn'),label=$('autoPubLabel'),icon=btn.querySelector('svg use');
+  if(autoRunning){
+    label.textContent='Auto Publish: NYALA';
+    icon.setAttribute('href','#i-pause');
+    btn.classList.remove('btn-success'); btn.classList.add('btn-active');
+    autoTimer=setInterval(()=>{
+      document.getElementById('psFrom').value=Math.floor(Math.random()*3);
+      const ts=['temperature','pressure','motion','alert'];
+      document.getElementById('psTopic').value=ts[Math.floor(Math.random()*ts.length)];
+      publishMsg();
+    },1200);
+  } else {
+    label.textContent='Auto Publish: MATI';
+    icon.setAttribute('href','#i-play');
+    btn.classList.remove('btn-active'); btn.classList.add('btn-success');
+    clearInterval(autoTimer);
+  }
+}
+
+// ── COMPARE ──────────────────────────────────────
+function cmpRR(avg,msgs){
+  $('#cmpRRLat').textContent=avg+'ms';
+  $('#barRRLat').style.width=Math.min(avg/2000*100,100)+'%';
+  $('#cmpRRMsg').textContent=msgs;
+  $('#barRRMsg').style.width=Math.min(msgs/20*100,100)+'%';
+  const thr=(1000/avg).toFixed(2);
+  $('#cmpRRThr').textContent=thr+' req/s';
+  $('#barRRThr').style.width=Math.min(thr/5*100,100)+'%';
+}
+function cmpPS(pub, dlv){
+  $('#cmpPSMsg').textContent=pub;
+  $('#barPSMsg').style.width=Math.min(pub/20*100,100)+'%';
+  const elapsed=Math.max((Date.now()-startTime)/1000,1);
+  const thr=(pub/elapsed).toFixed(2);
+  $('#cmpPSThr').textContent=thr+' msg/s';
+  $('#barPSThr').style.width=Math.min(thr/5*100,100)+'%';
+  // Update PS latency bar based on delivered count
+  if(dlv!=null){
+    const latEst=Math.round(50+Math.random()*30);
+    $('#cmpPSLat').textContent='~'+latEst+'ms';
+    $('#barPSLat').style.width=Math.min(latEst/500*100,100)+'%';
+  }
+}
+
+// ── UTILITIES ────────────────────────────────────
+function $(id){ return document.getElementById(id); }
+function addLog(boxId, type, msg){
+  const box=$(boxId);
+  if(box.firstElementChild?.querySelector('.log-time')?.textContent==='[--:--:--]') box.innerHTML='';
+  const t=new Date().toLocaleTimeString('id',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const d=document.createElement('div'); d.className='log-entry';
+  const cls=type==='send'?'log-send':type==='recv'?'log-recv':type==='pub'?'log-pub':'log-err';
+  const icon=type==='send'?'→':type==='recv'?'←':type==='pub'?'↑':'!';
+  d.innerHTML=`<span class="log-time">[${t}]</span> <span class="${cls}">${icon} ${msg}</span>`;
+  box.insertBefore(d,box.firstChild);
+  if(box.children.length>50) box.removeChild(box.lastChild);
+}
+function switchTab(id){
+  ['rr','ps','cmp'].forEach(t=>{
+    $('tab-btn-'+t).classList.toggle('active',t===id);
+    $('tab-'+t).classList.toggle('active',t===id);
+  });
+}
+
+// ── SLIDER ───────────────────────────────────────
+document.getElementById('rrLatency').addEventListener('input',e=>
+  $('rrLatVal').textContent=e.target.value+'ms');
+
+// ── RESIZE ───────────────────────────────────────
+let rTimer;
+window.addEventListener('resize',()=>{ 
+  clearTimeout(rTimer); 
+  rTimer=setTimeout(()=>{
+    rrState.packets = [];
+    psState.packets = [];
+    initCanvases();
+  },160); 
+});
+
+// ── INIT ─────────────────────────────────────────
+initCanvases();
+</script>
+</body>
+</html>
