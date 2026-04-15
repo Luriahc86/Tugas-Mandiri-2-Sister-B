@@ -36,7 +36,7 @@ Fokus utama project:
 ### 2) Tab Publish-Subscribe
 - Pilih publisher/sensor dan topic.
 - Publish pesan manual atau aktifkan auto publish.
-- Simulasi distribusi pesan melalui broker ke subscriber yang sesuai topic.
+- Simulasi distribusi pesan melalui broker ke subscriber.
 - Pantau:
   - jumlah publish,
   - jumlah pesan delivered,
