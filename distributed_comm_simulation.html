@@ -648,6 +648,7 @@ let rrState = {sent:0,recv:0,err:0,latencies:[],packets:[]};
 let psState = {pub:0,dlv:0,packets:[],msgCount:0,lastSecond:Date.now()};
 let autoRunning = false, autoTimer = null;
 const startTime = Date.now();
+let rrAFRunning = false, psAFRunning = false;
 
 // ── CANVAS SETUP ─────────────────────────────────
 let rrCtx, psCtx, rrW, rrH, psW, psH;
@@ -706,8 +707,15 @@ function initCanvases() {
   psCtx = ps.ctx; psW = ps.W; psH = ps.H;
   psNodes = scale(PS_DEFS, psW, psH);
 
+  // Re-scale nodes for PS if canvas was hidden (width 0) on first init
+  if (psW < 10) {
+    psNeedsInit = true;
+  }
+
   render();
 }
+
+let psNeedsInit = false;
 
 // ── DRAW HELPERS ─────────────────────────────────
 function drawCircle(ctx, x, y, r) {
@@ -879,129 +887,201 @@ function render() { drawRR(); drawPS(); }
 // ── RR ANIMATION ─────────────────────────────────
 let rrAF;
 function tickRR() {
-  let alive=false;
-  rrState.packets.forEach(p=>{
-    if(p.done) return;
-    if(p.phase==='wait'){
-      if(p.waitUntil && Date.now()>=p.waitUntil){
-        p.phase='res'; p.sx=p.ex; p.sy=p.ey;
-        const fn=rrNodes[p.fromId]; p.ex=fn.x+NR; p.ey=fn.y;
-        p.t=0; p.color=P.resArrow; p.speed=0.012;
+  rrAFRunning = true;
+  let alive = false;
+  rrState.packets.forEach(p => {
+    if (p.done) return;
+    if (p.phase === 'wait') {
+      if (p.waitUntil && Date.now() >= p.waitUntil) {
+        // Transition to response phase
+        p.phase = 'res';
+        p.sx = p.ex; p.sy = p.ey;
+        const fn = rrNodes[p.fromId];
+        p.ex = fn.x + NR; p.ey = fn.y;
+        p.t = 0; p.color = P.resArrow; p.speed = 0.012;
       } else {
-        alive=true; return;
+        // Still waiting for server processing time
+        alive = true;
+        return;
       }
     }
     p.t += p.speed;
-    if(p.t>=1){
-      if(p.phase==='req'){ p.phase='wait'; p.waitUntil=Date.now()+(p.lat||600); p.t=1; }
-      else if(p.phase==='res'){ p.done=true; return; }
+    if (p.t >= 1) {
+      p.t = 1;
+      if (p.phase === 'req') {
+        // Arrived at server, now wait before responding
+        p.cx = p.ex; p.cy = p.ey;
+        p.phase = 'wait';
+        p.waitUntil = Date.now() + (p.lat || 600);
+        alive = true;
+        return;
+      } else if (p.phase === 'res') {
+        p.cx = p.ex; p.cy = p.ey;
+        p.done = true;
+        return;
+      }
     }
-    if(!p.done){ p.cx=p.sx+(p.ex-p.sx)*Math.min(p.t,1); p.cy=p.sy+(p.ey-p.sy)*Math.min(p.t,1); }
-    if(!p.done) alive=true;
+    p.cx = p.sx + (p.ex - p.sx) * p.t;
+    p.cy = p.sy + (p.ey - p.sy) * p.t;
+    alive = true;
   });
-  rrState.packets=rrState.packets.filter(p=>!p.done);
+  rrState.packets = rrState.packets.filter(p => !p.done);
   drawRR();
-  if(alive||rrState.packets.length) rrAF=requestAnimationFrame(tickRR);
+  if (alive || rrState.packets.length > 0) {
+    rrAF = requestAnimationFrame(tickRR);
+  } else {
+    rrAFRunning = false;
+  }
 }
 
 function sendRR(){
-  const fi=+document.getElementById('rrFrom').value;
-  const ti=+document.getElementById('rrTo').value;
-  const lat=+document.getElementById('rrLatency').value;
-  const fn=rrNodes[fi], tn=rrNodes[ti];
-  const p={fromId:fi,toId:ti,lat,sx:fn.x+NR,sy:fn.y,ex:tn.x-NR,ey:tn.y,cx:fn.x+NR,cy:fn.y,t:0,speed:0.009,phase:'req',color:P.reqArrow,r:7};
+  const fi = +document.getElementById('rrFrom').value;
+  const ti = +document.getElementById('rrTo').value;
+  const lat = +document.getElementById('rrLatency').value;
+  const fn = rrNodes[fi], tn = rrNodes[ti];
+  if (!fn || !tn) return;
+  const p = {fromId:fi, toId:ti, lat, sx:fn.x+NR, sy:fn.y, ex:tn.x-NR, ey:tn.y, cx:fn.x+NR, cy:fn.y, t:0, speed:0.008, phase:'req', color:P.reqArrow, r:7};
   rrState.packets.push(p);
-  rrState.sent++; $('#rrSent').textContent=rrState.sent;
-  addLog('rrLog','send',`${fn.label} → ${tn.label} [REQ]`);
-  setTimeout(()=>{
-    if(p.error) return;
-    rrState.recv++; $('#rrRecv').textContent=rrState.recv;
+  rrState.sent++;
+  $('#rrSent').textContent = rrState.sent;
+  addLog('rrLog', 'send', `${fn.label} → ${tn.label} [REQ]`);
+  // Log response after round-trip duration: travel to server + wait + travel back
+  const tripDuration = (1/p.speed)*16 + lat + (1/0.012)*16;
+  setTimeout(() => {
+    if (p.error) return;
+    rrState.recv++;
+    $('#rrRecv').textContent = rrState.recv;
     rrState.latencies.push(lat);
-    const avg=Math.round(rrState.latencies.reduce((a,b)=>a+b,0)/rrState.latencies.length);
-    $('#rrAvgLat').textContent=avg+'ms';
-    $('#rrLatBar').style.width=Math.min(avg/2000*100,100)+'%';
-    addLog('rrLog','recv',`${tn.label} → ${fn.label} [200 OK]`);
+    const avg = Math.round(rrState.latencies.reduce((a,b) => a+b, 0) / rrState.latencies.length);
+    $('#rrAvgLat').textContent = avg + 'ms';
+    $('#rrLatBar').style.width = Math.min(avg/2000*100, 100) + '%';
+    addLog('rrLog', 'recv', `${tn.label} → ${fn.label} [200 OK]`);
     cmpRR(avg, rrState.sent);
-  }, lat+1200);
-  cancelAnimationFrame(rrAF); tickRR();
+  }, Math.max(tripDuration, lat + 500));
+  if (!rrAFRunning) tickRR();
 }
 
 function sendRRError(){
-  const fi=+document.getElementById('rrFrom').value;
-  const ti=+document.getElementById('rrTo').value;
-  const fn=rrNodes[fi], tn=rrNodes[ti];
-  const p={fromId:fi,toId:ti,lat:99999,sx:fn.x+NR,sy:fn.y,ex:tn.x-NR,ey:tn.y,cx:fn.x+NR,cy:fn.y,t:0,speed:0.009,phase:'req',color:P.errArrow,r:7,error:true};
+  const fi = +document.getElementById('rrFrom').value;
+  const ti = +document.getElementById('rrTo').value;
+  const fn = rrNodes[fi], tn = rrNodes[ti];
+  if (!fn || !tn) return;
+  const p = {fromId:fi, toId:ti, lat:99999, sx:fn.x+NR, sy:fn.y, ex:tn.x-NR, ey:tn.y, cx:fn.x+NR, cy:fn.y, t:0, speed:0.008, phase:'req', color:P.errArrow, r:7, error:true};
   rrState.packets.push(p);
-  rrState.sent++; $('#rrSent').textContent=rrState.sent;
-  addLog('rrLog','err',`${fn.label} → ${tn.label} [REQ]`);
-  setTimeout(()=>{ p.done=true; rrState.err++; $('#rrErr').textContent=rrState.err; addLog('rrLog','err',`⚠ Timeout — tidak ada respons dari ${tn.label}`); },2500);
-  cancelAnimationFrame(rrAF); tickRR();
+  rrState.sent++;
+  $('#rrSent').textContent = rrState.sent;
+  addLog('rrLog', 'err', `${fn.label} → ${tn.label} [REQ]`);
+  setTimeout(() => {
+    p.done = true;
+    rrState.err++;
+    $('#rrErr').textContent = rrState.err;
+    addLog('rrLog', 'err', `⚠ Timeout — tidak ada respons dari ${tn.label}`);
+    drawRR();
+  }, 2500);
+  if (!rrAFRunning) tickRR();
 }
 
 // ── PS ANIMATION ─────────────────────────────────
 let psAF;
 function tickPS(){
-  let alive=false;
-  psState.packets.forEach(p=>{
-    if(p.done) return;
-    p.t+=p.speed; 
-    if(p.t>=1){
+  psAFRunning = true;
+  let alive = false;
+  const toAdd = []; // collect packets to add after iteration
+  psState.packets.forEach(p => {
+    if (p.done) return;
+    p.t += p.speed;
+    if (p.t >= 1) {
+      p.t = 1;
+      p.cx = p.ex; p.cy = p.ey;
       if (p.phase === 'toBroker') {
         p.done = true;
+        // Queue delivery to matched subscribers
         const broker = psNodes[3];
         const subs = psNodes.filter(n => n.type === 'sub' && n.topics.includes(p.topic));
-        $('#psSubs').textContent = subs.length;
-        subs.forEach((sn,i) => {
+        const activeSubs = subs.length;
+        if (activeSubs > 0) {
+          $('#psSubs').textContent = activeSubs;
+        }
+        subs.forEach((sn, i) => {
+          // Stagger delivery slightly but don't restart full loop from setTimeout
           setTimeout(() => {
             psState.packets.push({
-              sx: broker.x + NR, sy: broker.y, ex: sn.x - NR, ey: sn.y,
-              cx: broker.x + NR, cy: broker.y, t: 0, speed: 0.018, 
-              color: p.color, r: 6, done: false, phase: 'toSub'
+              sx: broker.x + NR, sy: broker.y,
+              ex: sn.x - NR, ey: sn.y,
+              cx: broker.x + NR, cy: broker.y,
+              t: 0, speed: 0.016,
+              color: p.color, r: 6, done: false,
+              phase: 'toSub', topic: p.topic, subLabel: sn.label
             });
-            psState.dlv++; $('#psDlv').textContent = psState.dlv;
+            psState.dlv++;
+            $('#psDlv').textContent = psState.dlv;
             addLog('psLog', 'recv', `Broker → ${sn.label} [${p.topic}]`);
             subStatusAdd(sn.label, p.topic, p.color);
             cmpPS(psState.pub, psState.dlv);
-            cancelAnimationFrame(psAF); tickPS();
-          }, i * 150);
+            // Ensure animation loop is running
+            if (!psAFRunning) tickPS();
+          }, i * 180);
         });
       } else {
+        // toSub or any other phase: mark done
         p.done = true;
       }
     } else {
-      p.cx=p.sx+(p.ex-p.sx)*p.t; p.cy=p.sy+(p.ey-p.sy)*p.t; alive=true;
+      p.cx = p.sx + (p.ex - p.sx) * p.t;
+      p.cy = p.sy + (p.ey - p.sy) * p.t;
+      alive = true;
     }
   });
-  psState.packets=psState.packets.filter(p=>!p.done);
+  psState.packets = psState.packets.filter(p => !p.done);
   drawPS();
-  if(alive||psState.packets.length) psAF=requestAnimationFrame(tickPS);
+  if (alive || psState.packets.length > 0) {
+    psAF = requestAnimationFrame(tickPS);
+  } else {
+    psAFRunning = false;
+  }
 }
 
 function publishMsg(){
-  const pi=+document.getElementById('psFrom').value;
-  const topic=document.getElementById('psTopic').value;
-  const pn=psNodes[pi], broker=psNodes[3];
-  const color=TC[topic]||P.reqArrow;
-  psState.packets.push({sx:pn.x+NR,sy:pn.y,ex:broker.x-NR,ey:broker.y,cx:pn.x+NR,cy:pn.y,t:0,speed:0.018,color,r:7,done:false,phase:'toBroker',topic});
-  psState.pub++; $('#psPub').textContent=psState.pub;
-  addLog('psLog','pub',`${pn.label} → Broker [${topic}]`);
-  
+  // Re-init PS canvas if it was hidden during first load
+  if (psNeedsInit) {
+    psNeedsInit = false;
+    const ps = setupCanvas('cvPS');
+    psCtx = ps.ctx; psW = ps.W; psH = ps.H;
+    psNodes = scale(PS_DEFS, psW, psH);
+    drawPS();
+  }
+  const pi = +document.getElementById('psFrom').value;
+  const topic = document.getElementById('psTopic').value;
+  const pn = psNodes[pi], broker = psNodes[3];
+  if (!pn || !broker) return;
+  const color = TC[topic] || P.reqArrow;
+  psState.packets.push({
+    sx: pn.x + NR, sy: pn.y,
+    ex: broker.x - NR, ey: broker.y,
+    cx: pn.x + NR, cy: pn.y,
+    t: 0, speed: 0.016, color, r: 7, done: false, phase: 'toBroker', topic
+  });
+  psState.pub++;
+  $('#psPub').textContent = psState.pub;
+  addLog('psLog', 'pub', `${pn.label} → Broker [${topic}]`);
+
+  // Throughput calculation
   psState.msgCount++;
-  const now=Date.now();
-  const elapsed=(now-psState.lastSecond)/1000;
-  if(elapsed>=1){
-    const rate=(psState.msgCount/elapsed).toFixed(1);
-    $('#psThroughput').textContent=rate+' msg/s';
-    $('#psThrBar').style.width=Math.min(rate/5*100,100)+'%';
-    psState.msgCount=0; psState.lastSecond=now;
-  } else if(elapsed>0) {
-    // Show real-time estimate
-    const rate=(psState.msgCount/elapsed).toFixed(1);
-    $('#psThroughput').textContent=rate+' msg/s';
-    $('#psThrBar').style.width=Math.min(rate/5*100,100)+'%';
+  const now = Date.now();
+  const elapsed = (now - psState.lastSecond) / 1000;
+  if (elapsed >= 1) {
+    const rate = (psState.msgCount / elapsed).toFixed(1);
+    $('#psThroughput').textContent = rate + ' msg/s';
+    $('#psThrBar').style.width = Math.min(rate / 5 * 100, 100) + '%';
+    psState.msgCount = 0;
+    psState.lastSecond = now;
+  } else if (elapsed > 0) {
+    const rate = (psState.msgCount / elapsed).toFixed(1);
+    $('#psThroughput').textContent = rate + ' msg/s';
+    $('#psThrBar').style.width = Math.min(rate / 5 * 100, 100) + '%';
   }
   cmpPS(psState.pub, psState.dlv);
-  cancelAnimationFrame(psAF); tickPS();
+  if (!psAFRunning) tickPS();
 }
 
 function subStatusAdd(name, topic, color){
@@ -1066,7 +1146,7 @@ function cmpPS(pub, dlv){
 }
 
 // ── UTILITIES ────────────────────────────────────
-function $(id){ return document.getElementById(id); }
+function $(id){ return document.getElementById(id.startsWith('#') ? id.slice(1) : id); }
 function addLog(boxId, type, msg){
   const box=$(boxId);
   if(box.firstElementChild?.querySelector('.log-time')?.textContent==='[--:--:--]') box.innerHTML='';
@@ -1083,6 +1163,23 @@ function switchTab(id){
     $('tab-btn-'+t).classList.toggle('active',t===id);
     $('tab-'+t).classList.toggle('active',t===id);
   });
+  // Re-initialize canvas for the newly visible tab if needed
+  if (id === 'ps') {
+    const ps = setupCanvas('cvPS');
+    if (ps.W !== psW || ps.H !== psH) {
+      psCtx = ps.ctx; psW = ps.W; psH = ps.H;
+      psNodes = scale(PS_DEFS, psW, psH);
+      psNeedsInit = false;
+    }
+    drawPS();
+  } else if (id === 'rr') {
+    const rr = setupCanvas('cvRR');
+    if (rr.W !== rrW || rr.H !== rrH) {
+      rrCtx = rr.ctx; rrW = rr.W; rrH = rr.H;
+      rrNodes = scale(RR_DEFS, rrW, rrH);
+    }
+    drawRR();
+  }
 }
 
 // ── SLIDER ───────────────────────────────────────
